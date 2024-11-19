@@ -1,0 +1,33 @@
+apiVersion: apps.nvidia.com/v1alpha1
+kind: NIMCache
+metadata:
+  name: meta-llama3-8b-instruct
+  namespace: nim-service
+spec:
+  gpuSelectors:
+    node.kubernetes.io/instance-type: p4d.24xlarge
+  resources:
+    cpu: '0'
+    memory: '0'
+  source:
+    ngc:
+      authSecret: ngc-api-secret
+      model:
+        engine: vllm
+        precision: fp16
+        profiles:
+          - 8835c31752fbc67ef658b20a9f78e056914fdef0660206d82f252d62fd96064d
+        qosProfile: throughput
+        tensorParallelism: '1'
+      modelPuller: 'nvcr.io/nim/meta/llama3-8b-instruct:1.0.3'
+      pullSecret: ngc-secret
+  storage:
+    pvc:
+      create: true
+      size: 20Gi
+      storageClass: gp3-csi
+      volumeAccessMode: ReadWriteOnce
+  tolerations:
+    - effect: NoSchedule
+      key: p4-gpu
+      operator: Exists
