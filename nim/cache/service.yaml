@@ -4,10 +4,6 @@ metadata:
   name: meta-llama3-8b-instruct
   namespace: nim-service
 spec:
-  nodeSelector:
-    node.kubernetes.io/instance-type: p4d.24xlarge
-  metrics:
-    serviceMonitor: {}
   expose:
     ingress:
       enabled: true
@@ -26,23 +22,6 @@ spec:
     service:
       port: 8000
       type: ClusterIP
-  resources:
-    limits:
-      cpu: "12"
-      memory: 32Gi
-      nvidia.com/gpu: '1'
-    requests:
-      cpu: "12"
-      memory: 32Gi
-      nvidia.com/gpu: '1'
-  readinessProbe: {}
-  scale:
-    enabled: true
-    hpa:
-      minReplicas: 1
-      maxReplicas: 10
-  livenessProbe: {}
-  startupProbe: {}
   authSecret: ngc-api-secret
   image:
     pullPolicy: IfNotPresent
@@ -55,7 +34,3 @@ spec:
       name: meta-llama3-8b-instruct
       profile: '8835c31752fbc67ef658b20a9f78e056914fdef0660206d82f252d62fd96064d'
   replicas: 1
-  tolerations:
-    - effect: NoSchedule
-      key: p4-gpu
-      operator: Exists

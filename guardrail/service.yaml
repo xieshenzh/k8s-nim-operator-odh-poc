@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    "app.kubernetes.io/name": "nemo-guardrail"
+    "app.kubernetes.io/instance": "nemo-guardrail"
+  annotations:
+    "openshift.io/scc": "nonroot"
+  name: nemo-guardrail
+  namespace: nemo-service
+spec:
+  type: ClusterIP
+  selector:
+    "app":  "nemo-guardrail"
+    "app.kubernetes.io/name": "nemo-guardrail"
+    "app.kubernetes.io/instance":  "nemo-guardrail"
+  ports:
+    - name: service-port
+      protocol: TCP
+      port: 8000
+      targetPort: 8000

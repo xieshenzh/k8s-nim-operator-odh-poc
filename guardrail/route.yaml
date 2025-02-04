@@ -1,0 +1,13 @@
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: nemo-guardrail
+  namespace: nemo-service
+spec:
+  path: /
+  to:
+    kind: Service
+    name: nemo-guardrail
+  port:
+    targetPort: service-port

@@ -1,0 +1,17 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    "app.kubernetes.io/name": "nemo-guardrail"
+    "app.kubernetes.io/instance": "nemo-guardrail"
+  name: nemo-guardrail
+  namespace: nemo-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: nemo-guardrail
+subjects:
+  - kind: ServiceAccount
+    name: nemo-guardrail
+    namespace: nemo-service

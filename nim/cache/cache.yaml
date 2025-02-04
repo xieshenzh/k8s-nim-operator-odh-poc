@@ -4,11 +4,6 @@ metadata:
   name: meta-llama3-8b-instruct
   namespace: nim-service
 spec:
-  gpuSelectors:
-    node.kubernetes.io/instance-type: p4d.24xlarge
-  resources:
-    cpu: '0'
-    memory: '0'
   source:
     ngc:
       authSecret: ngc-api-secret
@@ -27,7 +22,3 @@ spec:
       size: 20Gi
       storageClass: gp3-csi
       volumeAccessMode: ReadWriteOnce
-  tolerations:
-    - effect: NoSchedule
-      key: p4-gpu
-      operator: Exists
