@@ -1,0 +1,41 @@
+apiVersion: apps.nvidia.com/v1alpha1
+kind: NemoGuardrail
+metadata:
+  labels:
+    "app.kubernetes.io/name": "nemo-guardrail"
+    "app.kubernetes.io/instance": "nemo-guardrail"
+  annotations:
+    "openshift.io/scc": "nonroot"
+  name: nemoguardrails-sample
+  namespace: nemo-service
+spec:
+  authSecret: ngc-api-secret
+  configStore:
+    configMap: gr-config
+  env:
+    - name: POETRY_VIRTUALENVS_CREATE
+      value: "false"
+  expose:
+    ingress:
+      spec: {}
+    service:
+      port: 8000
+      type: ClusterIP
+  image:
+    pullPolicy: IfNotPresent
+    repository: quay.io/xiezhang7/nemoguardrails-nim-test
+    tag: latest
+    volumeMounts:
+      - name: cache-volume
+        mountPath: /.cache
+      - name: config-volume
+        mountPath: /.config
+  volumes:
+    - name: cache-volume
+      emptyDir:
+        sizeLimit: 500Mi
+    - name: config-volume
+      emptyDir:
+        sizeLimit: 50Mi
+  replicas: 1
+
