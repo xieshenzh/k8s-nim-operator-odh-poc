@@ -6,7 +6,7 @@ metadata:
     "app.kubernetes.io/instance": "nemo-guardrail"
   annotations:
     "openshift.io/scc": "nonroot"
-  name: nemoguardrails-sample
+  name: nemo-guardrail
   namespace: nemo-service
 spec:
   authSecret: ngc-api-secret
@@ -25,17 +25,29 @@ spec:
     pullPolicy: IfNotPresent
     repository: quay.io/xiezhang7/nemoguardrails-nim-test
     tag: latest
-    volumeMounts:
-      - name: cache-volume
-        mountPath: /.cache
-      - name: config-volume
-        mountPath: /.config
-  volumes:
-    - name: cache-volume
-      emptyDir:
-        sizeLimit: 500Mi
-    - name: config-volume
-      emptyDir:
-        sizeLimit: 50Mi
   replicas: 1
+  livenessProbe:
+    enabled: true
+    probe:
+      httpGet:
+        path: /v1/rails/configs
+        port: 8000
+      initialDelaySeconds: 5
+      timeoutSeconds: 30
+  readinessProbe:
+    enabled: true
+    probe:
+      httpGet:
+        path: /v1/rails/configs
+        port: 8000
+      initialDelaySeconds: 5
+      timeoutSeconds: 30
+  startupProbe:
+    enabled: true
+    probe:
+      httpGet:
+        path: /v1/rails/configs
+        port: 8000
+      initialDelaySeconds: 5
+      timeoutSeconds: 30
 
