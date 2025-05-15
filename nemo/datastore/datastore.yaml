@@ -1,0 +1,54 @@
+apiVersion: apps.nvidia.com/v1alpha1
+kind: NemoDatastore
+metadata:
+  name: datastore
+  namespace: nemo
+spec:
+  secrets:
+    datastoreConfigSecret: "nemo-ms-nemo-datastore"
+    datastoreInitSecret: "nemo-ms-nemo-datastore-init"
+    datastoreInlineConfigSecret: "nemo-ms-nemo-datastore-inline-config"
+    giteaAdminSecret: "gitea-admin-credentials"
+    lfsJwtSecret: "nemo-ms-nemo-datastore--lfs-jwt"
+  databaseConfig:
+    credentials:
+      user: postgres
+      secretName: datastore-postgres-secret
+      passwordKey: password
+    host: xieshen-nemo-postgres.cl79rgwmnzfg.us-east-1.rds.amazonaws.com
+    port: 5432
+    databaseName: nemo
+  objectStoreConfig:
+    serveDirect: true
+    endpoint: "s3.us-east-1.amazonaws.com"
+    bucketName: "xieshen-nemo-s3"
+    region: "us-east-1"
+    ssl: true
+    credentials:
+      user: ""
+      secretName: datastore-s3-secret
+      passwordKey: secretAccessKey
+  pvc:
+    name: "pvc-shared-data"
+    create: true
+    storageClass: "gp3-csi"
+    volumeAccessMode: ReadWriteOnce
+    size: "10Gi"
+  expose:
+    service:
+      type: ClusterIP
+      port: 8000
+  image:
+    repository: nvcr.io/nvidia/nemo-microservices/datastore
+    tag: "25.04"
+    pullPolicy: IfNotPresent
+    pullSecrets:
+      - ngc-secret
+  replicas: 1
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "500m"
+    limits:
+      memory: "512Mi"
+      cpu: "1"
