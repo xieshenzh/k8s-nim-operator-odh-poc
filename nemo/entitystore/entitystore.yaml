@@ -1,0 +1,27 @@
+---
+apiVersion: apps.nvidia.com/v1alpha1
+kind: NemoEntitystore
+metadata:
+  name: entitystore
+  namespace: nemo
+spec:
+  image:
+    repository: nvcr.io/nvidia/nemo-microservices/entity-store
+    tag: "25.04"
+    pullPolicy: IfNotPresent
+    pullSecrets:
+      - ngc-secret
+  expose:
+    service:
+      type: ClusterIP
+      port: 8000
+  databaseConfig:
+    databaseName: entitystore
+    host: xieshen-nemo-postgres.cl79rgwmnzfg.us-east-1.rds.amazonaws.com
+    port: 5432
+    credentials:
+      user: postgres
+      secretName: entitystore-postgres-secret
+      passwordKey: password
+  datastore:
+    endpoint: http://datastore.nemo.svc.cluster.local:8000

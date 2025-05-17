@@ -17,7 +17,7 @@ spec:
       passwordKey: password
     host: xieshen-nemo-postgres.cl79rgwmnzfg.us-east-1.rds.amazonaws.com
     port: 5432
-    databaseName: nemo
+    databaseName: datastore
   objectStoreConfig:
     serveDirect: true
     endpoint: "s3.us-east-1.amazonaws.com"

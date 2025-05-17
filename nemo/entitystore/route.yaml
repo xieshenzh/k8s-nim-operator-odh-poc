@@ -1,0 +1,14 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: entitystore
+  namespace: nemo
+spec:
+  path: /
+  to:
+    kind: Service
+    name: entitystore
+    weight: 100
+  port:
+    targetPort: api
+  wildcardPolicy: None
