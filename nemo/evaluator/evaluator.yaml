@@ -1,0 +1,45 @@
+apiVersion: apps.nvidia.com/v1alpha1
+kind: NemoEvaluator
+metadata:
+  name: evaluator
+  namespace: nemo
+spec:
+  evaluationImages:
+    bigcodeEvalHarness: "nvcr.io/nvidia/nemo-microservices/eval-tool-benchmark-bigcode:0.12.13"
+    lmEvalHarness: "nvcr.io/nvidia/nemo-microservices/eval-tool-benchmark-lm-eval-harness:0.12.15"
+    similarityMetrics: "nvcr.io/nvidia/nemo-microservices/eval-tool-benchmark-custom-eval:0.12.13"
+    llmAsJudge: "nvcr.io/nvidia/nemo-microservices/eval-tool-benchmark-llm-as-a-judge:0.12.15"
+    mtBench: "nvcr.io/nvidia/nemo-microservices/eval-tool-benchmark-llm-as-a-judge:0.12.15"
+    retriever: "nvcr.io/nvidia/nemo-microservices/eval-tool-benchmark-retriever:0.12.13"
+    rag: "nvcr.io/nvidia/nemo-microservices/eval-tool-benchmark-rag:0.12.13"
+  image:
+    repository: nvcr.io/nvidia/nemo-microservices/evaluator
+    tag: "25.04"
+    pullPolicy: IfNotPresent
+    pullSecrets:
+      - ngc-secret
+  expose:
+    service:
+      type: ClusterIP
+      port: 8000
+  argoWorkflows:
+    endpoint: https://argo-server.argo.svc.cluster.local:2746
+    serviceAccount: argo-workflows-executor
+  vectorDB:
+    endpoint: http://cluster-milvus.milvus-cluster.svc.cluster.local:19530
+  datastore:
+    endpoint: http://datastore.nemo.svc.cluster.local:8000/v1/hf
+  entitystore:
+    endpoint: http://entity.nemo.svc.cluster.local:8000
+  databaseConfig:
+    host: xieshen-nemo-postgres.cl79rgwmnzfg.us-east-1.rds.amazonaws.com
+    port: 5432
+    databaseName: evaluator
+    credentials:
+      user: postgres
+      secretName: evaluator-postgres-secret
+      passwordKey: password
+  otel:
+    enabled: true
+    exporterOtlpEndpoint: http://otel-collector.openshift-opentelemetry-operator.svc.cluster.local:4317
+  replicas: 1
