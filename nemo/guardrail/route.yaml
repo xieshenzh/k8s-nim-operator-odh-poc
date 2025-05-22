@@ -1,0 +1,14 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: guardrail
+  namespace: nemo
+spec:
+  path: /
+  to:
+    kind: Service
+    name: guardrail
+    weight: 100
+  port:
+    targetPort: api
+  wildcardPolicy: None
