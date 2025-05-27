@@ -1,3 +1,9 @@
+k8s-nim-operator guide (version 2.0): https://docs.nvidia.com/nim-operator/latest/nemo-prerequisites.html
+
+Nemo microservices guide (version 25.4.0): https://docs.nvidia.com/nemo/microservices/latest/set-up/deploy-as-microservices/index.html
+
+Jupyter notebook PoC: https://github.com/NVIDIA/k8s-nim-operator/blob/main/test/e2e/jupyter-notebook/e2e-notebook.ipynb
+
 1. Create a namespace: https://docs.nvidia.com/nim-operator/latest/nemo-prerequisites.html#create-nemo-namespace
 2. Create Secrets in the namespace:
     ```shell
