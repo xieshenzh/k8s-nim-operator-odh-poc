@@ -30,7 +30,7 @@ spec:
   datastore:
     endpoint: http://datastore.nemo.svc.cluster.local:8000/v1/hf
   entitystore:
-    endpoint: http://entity.nemo.svc.cluster.local:8000
+    endpoint: http://entitystore.nemo.svc.cluster.local:8000
   databaseConfig:
     host: xieshen-nemo-postgres.cl79rgwmnzfg.us-east-1.rds.amazonaws.com
     port: 5432

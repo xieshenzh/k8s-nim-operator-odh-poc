@@ -15,3 +15,8 @@
     ```
    
 3. Install MLFlow: https://docs.nvidia.com/nemo/microservices/latest/set-up/deploy-as-microservices/customizer.html#mlflow
+
+4. Permission for Customizer Job
+   ```shell
+   oc adm policy add-scc-to-user privileged -z default -n nemo
+   ```

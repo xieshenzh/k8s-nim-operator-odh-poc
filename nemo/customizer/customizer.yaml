@@ -39,7 +39,7 @@ spec:
       - ngc-secret
   # URL to the NeMo Entity Store microservice
   entitystore:
-    endpoint: http://entity.nemo.svc.cluster.local:8000
+    endpoint: http://entitystore.nemo.svc.cluster.local:8000
   # URL to the NeMo Data Store microservice
   datastore:
     endpoint: http://datastore.nemo.svc.cluster.local:8000
