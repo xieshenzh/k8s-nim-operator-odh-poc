@@ -1,0 +1,74 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    "app.kubernetes.io/name": "nemo-llamastack"
+    "app.kubernetes.io/instance": "nemo-llamastack"
+  annotations:
+    "openshift.io/scc": "nonroot"
+  name: llamastack
+  namespace: nemo
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 0
+  selector:
+    matchLabels:
+      "app": "nemo-llamastack"
+      "app.kubernetes.io/name": "nemo-llamastack"
+      "app.kubernetes.io/instance": "nemo-llamastack"
+  template:
+    metadata:
+      labels:
+        "app": "nemo-llamastack"
+        "app.kubernetes.io/name": "nemo-llamastack"
+        "app.kubernetes.io/instance": "nemo-llamastack"
+      annotations:
+        "openshift.io/scc": "nonroot"
+    spec:
+      containers:
+        - name: llamastack-ctr
+          image: llamastack/distribution-nvidia
+          imagePullPolicy: Always
+#          volumeMounts:
+#            - name: run-config
+#              mountPath: /root/my-run.yaml
+#              subPath: run.yaml
+          env:
+            - name: NVIDIA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ngc-api-secret
+                  key: NVIDIA_API_KEY
+            - name: NVIDIA_CUSTOMIZER_URL
+              value: "http://customizer.xieshen-nemo.svc.cluster.local:8000"
+            - name: GUARDRAILS_SERVICE_URL
+              value: "http://guardrail.xieshen-nemo.svc.cluster.local:8000"
+            - name: NVIDIA_GUARDRAILS_CONFIG_ID
+              value: "demo-self-check-input-output"
+            - name: NVIDIA_EVALUATOR_URL
+              value: "http://evaluator.xieshen-nemo.svc.cluster.local:8000"
+            - name: INFERENCE_MODEL
+              value: "Llama-3.2-1B-Instruct"
+            - name: SAFETY_MODEL
+              value: "meta/llama-3.2-1b-instruct"
+          ports:
+            - containerPort: 8321
+              protocol: TCP
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+#      volumes:
+#        - name: run-config
+#          configMap:
+#            name: llamastack-config
+      imagePullSecrets:
+        - name: ngc-secret
