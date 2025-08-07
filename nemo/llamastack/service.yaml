@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: llamastack
+  namespace: nemo
+spec:
+  ports:
+    - protocol: TCP
+      port: 8321
+      targetPort: 8321
+  type: ClusterIP
+  selector:
+    app: nemo-llamastack
