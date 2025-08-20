@@ -1,0 +1,15 @@
+[project]
+name = "nemo_llama_stack_e2e"
+version = "0.1"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { "text" = "MIT" }
+dependencies = [
+    "datasets>=4.0.0",
+    "jsonschema",
+    "jinja2>=3.1.6",
+    "openai>=1.66",
+    "nemo-microservices",
+    "huggingface_hub",
+    "llama-stack-client>=0.2.17",
+]
