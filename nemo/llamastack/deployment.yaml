@@ -34,10 +34,15 @@ spec:
         - name: llamastack-ctr
           image: quay.io/xiezhang7/distribution-nvidia
           imagePullPolicy: Always
-#          volumeMounts:
-#            - name: run-config
-#              mountPath: /root/my-run.yaml
-#              subPath: run.yaml
+          command: ["llama", "stack", "run"]
+          args:
+            - "/app/my-run.yaml"
+            - "--port"
+            - "$(LLAMA_STACK_PORT)"
+          volumeMounts:
+            - name: run-config
+              mountPath: /app/my-run.yaml
+              subPath: run.yaml
           env:
             - name: NVIDIA_API_KEY
               valueFrom:
@@ -53,9 +58,11 @@ spec:
             - name: NVIDIA_EVALUATOR_URL
               value: "http://evaluator.nemo.svc.cluster.local:8000"
             - name: INFERENCE_MODEL
-              value: "meta-llama/Llama-3.2-1B-Instruct"
+              value: "meta/llama-3.2-1b-instruct"
             - name: SAFETY_MODEL
               value: "meta/llama-3.2-1b-instruct"
+            - name: LLAMA_STACK_PORT
+              value: '8321'
           ports:
             - containerPort: 8321
               protocol: TCP
@@ -66,9 +73,9 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1"
-#      volumes:
-#        - name: run-config
-#          configMap:
-#            name: llamastack-config
+      volumes:
+        - name: run-config
+          configMap:
+            name: llamastack-config
       imagePullSecrets:
         - name: ngc-secret
