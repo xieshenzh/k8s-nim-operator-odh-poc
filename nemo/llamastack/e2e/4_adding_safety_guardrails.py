@@ -27,7 +27,7 @@ os.environ["NVIDIA_PROJECT_ID"] = PROJECT_ID
 os.environ["NVIDIA_BASE_URL"] = NIM_URL
 
 # Data Store env vars
-os.environ["NVIDIA_DATASETS_URL"] = DATA_STORE_URL
+os.environ["NVIDIA_DATASETS_URL"] = ENTITY_STORE_URL
 
 ## Customizer env vars
 os.environ["NVIDIA_CUSTOMIZER_URL"] = CUSTOMIZER_URL
@@ -59,7 +59,9 @@ client.initialize()
 
 from config import *
 
-print(f"Entity Store, Customizer, Evaluator, Guardrails endpoint: {NEMO_URL}")
+print(f"Entity Store endpoint: {ENTITY_STORE_URL}")
+print(f"Customizer endpoint: {CUSTOMIZER_URL}")
+print(f"Evaluator endpoint: {EVALUATOR_URL}")
 print(f"NIM endpoint: {NIM_URL}")
 
 
@@ -121,7 +123,7 @@ print(f"{CS_NAMESPACE}/{CS_NAME} is deployed: {resp.json()['deployed']}")
 # In[7]:
 
 
-CUSTOMIZED_MODEL = "jgulabrai-1/test-llama-stack@v1"
+CUSTOMIZED_MODEL = "nvidia-tool-calling-tutorial/test-llama-stack@v1"
 
 
 # The following code checks if the NIM endpoint hosts the models properly.
@@ -171,7 +173,7 @@ data = {
         {
           "type": "content_safety",
           "engine": "nim",
-          "model": "meta/llama-3.2-1b-instruct"
+          "model": "nvidia/llama-3.1-nemoguard-8b-content-safety"
         }
       ],
       "rails": {
@@ -262,7 +264,7 @@ tools = [
 
 from llama_stack.apis.models.models import ModelType
 
-os.environ["NVIDIA_GUARDRAILS_CONFIG_ID"] = "toolcalling"
+os.environ["NVIDIA_GUARDRAILS_CONFIG_ID"] = GUARDRAILS_CONFIG_ID
 
 client = LlamaStackAsLibraryClient("nvidia")
 client.initialize()
@@ -284,7 +286,7 @@ class ToolCallingWithGuardrails:
         self.guardrails = guardrails
 
         self.nim_url = NIM_URL
-        self.customized_model = "meta/llama-3.2-1b-instruct@v1.0.0+A100"
+        self.customized_model = CUSTOMIZED_MODEL
 
         # Register model to use as shield
         self.shield_id = BASE_MODEL

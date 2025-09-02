@@ -14,7 +14,7 @@ EVALUATOR_URL = ""
 GUARDRAIL_URL = ""
 
 # (Required) Configure the base model. Must be one supported by the NeMo Customizer deployment!
-BASE_MODEL = "meta/llama-3.2-1b-instruct@v1.0.0+A100"
+BASE_MODEL = "meta/llama-3.2-1b-instruct"
 
 # (Required) Hugging Face Token
 HF_TOKEN = ""
@@ -30,4 +30,4 @@ DATASET_NAME = "xlam-ft-dataset-1"
 # like to associate with your Customized models.
 PROJECT_ID = ""
 # (Optional) Directory to save the Customized model.
-CUSTOMIZED_MODEL_DIR = "nvidia-tool-calling-tutorial/test-llama-stack-4@v1"
+CUSTOMIZED_MODEL_DIR = "nvidia-tool-calling-tutorial/test-llama-stack@v1"

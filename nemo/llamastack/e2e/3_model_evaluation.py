@@ -27,7 +27,7 @@ os.environ["NVIDIA_PROJECT_ID"] = PROJECT_ID
 os.environ["NVIDIA_BASE_URL"] = NIM_URL
 
 # Data Store env vars
-os.environ["NVIDIA_DATASETS_URL"] = DATA_STORE_URL
+os.environ["NVIDIA_DATASETS_URL"] = ENTITY_STORE_URL
 
 ## Customizer env vars
 os.environ["NVIDIA_CUSTOMIZER_URL"] = CUSTOMIZER_URL
@@ -85,7 +85,9 @@ def wait_eval_job(benchmark_id: str, job_id: str, polling_interval: int = 10, ti
 from config import *
 
 print(f"Data Store endpoint: {DATA_STORE_URL}")
-print(f"Entity Store, Customizer, Evaluator endpoint: {NEMO_URL}")
+print(f"Entity Store endpoint: {ENTITY_STORE_URL}")
+print(f"Customizer endpoint: {CUSTOMIZER_URL}")
+print(f"Evaluator endpoint: {EVALUATOR_URL}")
 print(f"NIM endpoint: {NIM_URL}")
 print(f"Namespace: {NMS_NAMESPACE}")
 print(f"Base Model: {BASE_MODEL}")
@@ -99,7 +101,7 @@ print(f"Base Model: {BASE_MODEL}")
 
 # Populate this variable with the value from the previous notebook
 # CUSTOMIZED_MODEL = ""
-CUSTOMIZED_MODEL = "jgulabrai-1/test-llama-stack@v1"
+CUSTOMIZED_MODEL = "nvidia-tool-calling-tutorial/test-llama-stack@v1"
 
 
 # The following code verifies that the model has been registed.

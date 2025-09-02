@@ -113,7 +113,9 @@ def wait_nim_loads_customized_model(model_id: str, polling_interval: int = 10, t
 from config import *
 
 print(f"Data Store endpoint: {DATA_STORE_URL}")
-print(f"Entity Store, Customizer, Evaluator endpoint: {NEMO_URL}")
+print(f"Entity Store endpoint: {ENTITY_STORE_URL}")
+print(f"Customizer endpoint: {CUSTOMIZER_URL}")
+print(f"Evaluator endpoint: {EVALUATOR_URL}")
 print(f"NIM endpoint: {NIM_URL}")
 print(f"Namespace: {NMS_NAMESPACE}")
 print(f"Base Model for Customization: {BASE_MODEL}")
@@ -269,7 +271,7 @@ response = client.datasets.register(
     metadata={
         "format": "json",
         "description": "Tool calling xLAM dataset in OpenAI ChatCompletions format",
-        "provider": "nvidia"
+        "provider_id": "nvidia"
     }
 )
 print(response)
