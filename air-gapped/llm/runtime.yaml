@@ -1,0 +1,44 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: nim-air-gapped-llm
+spec:
+  containers:
+    - env:
+        - name: NIM_MODEL_NAME
+          value: /mnt/models/cache
+        - name: NIM_MODEL_PROFILE
+          value: 574eb0765118b2087b5fd6c8684a79e682bd03062f80343cfd9e2140ffa962cd
+      image: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:1.13.1'
+      name: kserve-container
+      ports:
+        - containerPort: 8000
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: shm
+        - mountPath: /mnt/models/cache
+          name: nim-pvc
+        - mountPath: /opt/nim/workspace
+          name: nim-workspace
+  imagePullSecrets:
+    - name: ngc-secret
+  multiModel: false
+  protocolVersions:
+    - grpc-v2
+    - v2
+  supportedModelFormats:
+    - autoSelect: false
+      name: nim-air-gapped-llm
+      priority: 1
+      version: 1.13.1
+  volumes:
+    - name: nim-pvc
+      persistentVolumeClaim:
+        claimName: nim-air-gapped-llm
+    - emptyDir: {}
+      name: nim-workspace
+    - emptyDir:
+        medium: Memory
+        sizeLimit: 16Gi
+      name: shm

@@ -1,0 +1,33 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: nim-air-gapped-multi-llm
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    maxReplicas: 1
+    minReplicas: 1
+    model:
+      env:
+        - name: LOG_LEVEL
+          value: DEBUG
+      modelFormat:
+        name: nim-air-gapped-multi-llm
+      name: ''
+      resources:
+        limits:
+          cpu: '16'
+          memory: 64Gi
+          nvidia.com/gpu: '1'
+        requests:
+          cpu: '8'
+          memory: 32Gi
+          nvidia.com/gpu: '1'
+      runtime: nim-air-gapped-multi-llm
+    tolerations:
+      - effect: NoSchedule
+        key: g6-gpu
+        operator: Exists
+      - effect: NoSchedule
+        key: p4-gpu
+        operator: Exists

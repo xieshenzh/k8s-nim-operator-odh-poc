@@ -1,0 +1,71 @@
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: nim-air-gapped-llm
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        node.kubernetes.io/instance-type: p4d.24xlarge
+      serviceAccountName: nim-cache-sa
+      imagePullSecrets:
+        - name: ngc-secret
+      securityContext:
+        seLinuxOptions:
+          level: 's0:c33,c17'
+        runAsUser: 1000
+        runAsNonRoot: true
+        fsGroup: 2000
+      containers:
+        - resources:
+            limits:
+              cpu: 1000m
+              memory: 50Gi
+            requests:
+              cpu: 1000m
+              memory: 50Gi
+          name: llm-nim
+          command:
+            - download-to-cache
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+                - KILL
+                - MKNOD
+                - SETGID
+                - SETUID
+            runAsUser: 1000
+            runAsGroup: 2000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: nim-cache-volume
+              mountPath: /opt/nim/.cache
+          envFrom:
+            - secretRef:
+                name: ngc-api-secret
+          image: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:1.13.1'
+          args: ["--profile", "574eb0765118b2087b5fd6c8684a79e682bd03062f80343cfd9e2140ffa962cd"]
+      serviceAccount: nim-cache-sa
+      volumes:
+        - name: nim-cache-volume
+          persistentVolumeClaim:
+            claimName: nim-air-gapped-llm
+      tolerations:
+        - key: p4-gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+        - key: node.kubernetes.io/memory-pressure
+          operator: Exists
+          effect: NoSchedule

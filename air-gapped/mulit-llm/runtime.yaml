@@ -1,0 +1,44 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: nim-air-gapped-multi-llm
+spec:
+  containers:
+    - env:
+        - name: NIM_MODEL_NAME
+          value: /mnt/models/cache
+        - name: NIM_SERVED_MODEL_NAME
+          value: llama-3.1-nemotron-nano-8b-v1
+      image: 'nvcr.io/nim/nvidia/llm-nim:1.14.0'
+      name: kserve-container
+      ports:
+        - containerPort: 8000
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: shm
+        - mountPath: /mnt/models/cache
+          name: nim-pvc
+        - mountPath: /opt/nim/workspace
+          name: nim-workspace
+  imagePullSecrets:
+    - name: ngc-secret
+  multiModel: false
+  protocolVersions:
+    - grpc-v2
+    - v2
+  supportedModelFormats:
+    - autoSelect: false
+      name: nim-air-gapped-multi-llm
+      priority: 1
+      version: 1.14.0
+  volumes:
+    - name: nim-pvc
+      persistentVolumeClaim:
+        claimName: nim-air-gapped-multi-llm
+    - emptyDir: {}
+      name: nim-workspace
+    - emptyDir:
+        medium: Memory
+        sizeLimit: 16Gi
+      name: shm

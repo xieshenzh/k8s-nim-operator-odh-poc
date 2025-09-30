@@ -1,0 +1,71 @@
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: nim-air-gapped-multi-llm
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        node.kubernetes.io/instance-type: p4d.24xlarge
+      serviceAccountName: nim-cache-sa
+      imagePullSecrets:
+        - name: ngc-secret
+      securityContext:
+        seLinuxOptions:
+          level: 's0:c33,c17'
+        runAsUser: 1000
+        runAsNonRoot: true
+        fsGroup: 2000
+      containers:
+        - resources:
+            limits:
+              cpu: 500m
+              memory: 20Gi
+            requests:
+              cpu: 500m
+              memory: 20Gi
+          name: llm-nim
+          command:
+            - create-model-store
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+                - KILL
+                - MKNOD
+                - SETGID
+                - SETUID
+            runAsUser: 1000
+            runAsGroup: 2000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: nim-cache-volume
+              mountPath: /model-store
+          envFrom:
+            - secretRef:
+                name: hf-token
+          image: 'nvcr.io/nim/nvidia/llm-nim:1.14.0'
+          args: ["--model-repo", "hf://nvidia/Llama-3.1-Nemotron-Nano-8B-v1", "--model-store", "/model-store"]
+      serviceAccount: nim-cache-sa
+      volumes:
+        - name: nim-cache-volume
+          persistentVolumeClaim:
+            claimName: nim-air-gapped-multi-llm
+      tolerations:
+        - key: p4-gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+        - key: node.kubernetes.io/memory-pressure
+          operator: Exists
+          effect: NoSchedule
