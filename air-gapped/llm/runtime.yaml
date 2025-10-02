@@ -5,7 +5,7 @@ metadata:
 spec:
   containers:
     - env:
-        - name: NIM_MODEL_NAME
+        - name: NIM_CACHE_PATH
           value: /mnt/models/cache
         - name: NIM_MODEL_PROFILE
           value: 574eb0765118b2087b5fd6c8684a79e682bd03062f80343cfd9e2140ffa962cd
