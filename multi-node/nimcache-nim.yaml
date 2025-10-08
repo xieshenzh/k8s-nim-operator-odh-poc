@@ -1,0 +1,61 @@
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: nim-air-gapped-llm
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        node.kubernetes.io/instance-type: g5.2xlarge
+      serviceAccountName: nim-cache-sa
+      imagePullSecrets:
+        - name: ngc-secret
+      securityContext:
+        seLinuxOptions:
+          level: 's0:c36,c35'
+        runAsUser: 1000
+        runAsNonRoot: true
+        fsGroup: 2000
+      containers:
+        - resources:
+            limits:
+              cpu: '4'
+              memory: 24Gi
+            requests:
+              cpu: '2'
+              memory: 12Gi
+          name: llm-nim
+          command:
+            - create-model-store
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+                - KILL
+                - MKNOD
+                - SETGID
+                - SETUID
+            runAsUser: 1000
+            runAsGroup: 2000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: nim-cache-volume
+              mountPath: /model-store
+              subPath: meta-llama-3-1-8b-instruct
+          envFrom:
+            - secretRef:
+                name: ngc-api-secret
+          image: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:1.13.1'
+          args: ["--profile", "574eb0765118b2087b5fd6c8684a79e682bd03062f80343cfd9e2140ffa962cd", "--model-store", "/model-store"]
+      serviceAccount: nim-cache-sa
+      volumes:
+        - name: nim-cache-volume
+          persistentVolumeClaim:
+            claimName: nim-air-gapped-llm
+      tolerations:
+        - key: g5-gpu
+          operator: Exists
+          effect: NoSchedule
