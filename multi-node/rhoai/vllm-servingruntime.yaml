@@ -1,0 +1,277 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"serving.kserve.io/v1alpha1","kind":"ServingRuntime","metadata":{"annotations":{"opendatahub.io/recommended-accelerators":"[\"nvidia.com/gpu\"]","opendatahub.io/runtime-version":"v0.9.1.0","openshift.io/display-name":"vLLM Multi-Node ServingRuntime for KServe"},"labels":{"opendatahub.io/dashboard":"false"},"name":"vllm-multinode-runtime","namespace":"xieshen-nim"},"spec":{"annotations":{"prometheus.io/path":"/metrics","prometheus.io/port":"8080"},"containers":[{"args":["--served-model-name={{.Name}}","--port=8080"],"command":["bash","-c","export MODEL_NAME=${MODEL_DIR}\nCMD=\"python3 -m vllm.entrypoints.openai.api_server \\\n    --distributed-executor-backend ray \\\n    --model=${MODEL_NAME} \\\n    --tensor-parallel-size=${TENSOR_PARALLEL_SIZE} \\\n    --pipeline-parallel-size=${PIPELINE_PARALLEL_SIZE} $0 $@\"\necho \"*MultiNode VLLM Runtime Command*\"\necho \"$CMD\"\n\necho \"\"\necho \"Ray Start\"\nray start --head --disable-usage-stats --include-dashboard false \n# wait for other node to join\nuntil [[ $(ray status --address ${RAY_ADDRESS} | grep -c node_) -eq ${PIPELINE_PARALLEL_SIZE} ]]; do\n  echo \"Waiting...\"\n  sleep 1\ndone\nray status --address ${RAY_ADDRESS}\n\nexec $CMD\n"],"env":[{"name":"RAY_USE_TLS","value":"1"},{"name":"RAY_TLS_SERVER_CERT","value":"/etc/ray/tls/tls.pem"},{"name":"RAY_TLS_SERVER_KEY","value":"/etc/ray/tls/tls.pem"},{"name":"RAY_TLS_CA_CERT","value":"/etc/ray/tls/ca.crt"},{"name":"RAY_PORT","value":"6379"},{"name":"RAY_ADDRESS","value":"127.0.0.1:6379"},{"name":"POD_IP","valueFrom":{"fieldRef":{"fieldPath":"status.podIP"}}},{"name":"POD_NAMESPACE","valueFrom":{"fieldRef":{"fieldPath":"metadata.namespace"}}},{"name":"VLLM_NO_USAGE_STATS","value":"1"},{"name":"HOME","value":"/tmp"},{"name":"HF_HOME","value":"/tmp/hf_home"}],"image":"quay.io/modh/vllm@sha256:56aa86c6ed6ba6cc9557a8583ff9d4ee535193f6cda030bd1268064bc70120e3","livenessProbe":{"exec":{"command":["bash","-c","# Check if the registered ray nodes count is greater or the same than PIPELINE_PARALLEL_SIZE\nregistered_node_count=$(ray status --address ${RAY_ADDRESS} | grep -c node_)\nif [[ ! ${registered_node_count} -ge \"${PIPELINE_PARALLEL_SIZE}\" ]]; then\n  echo \"Unhealthy - Registered nodes count (${registered_node_count}) must not be less PIPELINE_PARALLEL_SIZE (${PIPELINE_PARALLEL_SIZE}).\"\n  exit 1\nfi     \n\n# Check model health\nhealth_check=$(curl -o /dev/null -s -w \"%{http_code}\\n\" http://localhost:8080/health)\nif [[ ${health_check} != 200 ]]; then\n  echo \"Unhealthy - vLLM Runtime Health Check failed.\" \n  exit 1\nfi\n"]},"failureThreshold":2,"periodSeconds":5,"successThreshold":1,"timeoutSeconds":15},"name":"kserve-container","ports":[{"containerPort":8080,"name":"http","protocol":"TCP"}],"readinessProbe":{"exec":{"command":["bash","-c","# Check model health \nhealth_check=$(curl -o /dev/null -s -w \"%{http_code}\\n\" http://localhost:8080/health)\nif [[ ${health_check} != 200 ]]; then\n  echo \"Unhealthy - vLLM Runtime Health Check failed.\" \n  exit 1\nfi\n"]},"failureThreshold":2,"periodSeconds":5,"successThreshold":1,"timeoutSeconds":15},"resources":{"limits":{"cpu":"16","memory":"48Gi"},"requests":{"cpu":"8","memory":"24Gi"}},"startupProbe":{"exec":{"command":["bash","-c","# This need when head node have issues and restarted.\n# It will wait for new worker node.                     \nregistered_node_count=$(ray status --address ${RAY_ADDRESS} | grep -c node_)\nif [[ ! ${registered_node_count} -ge \"${PIPELINE_PARALLEL_SIZE}\" ]]; then\n  echo \"Unhealthy - Registered nodes count (${registered_node_count}) must not be less PIPELINE_PARALLEL_SIZE (${PIPELINE_PARALLEL_SIZE}).\"\n  exit 1\nfi\n\n# Double check to make sure Model is ready to serve.\nfor i in 1 2; do                    \n  # Check model health\n  health_check=$(curl -o /dev/null -s -w \"%{http_code}\\n\" http://localhost:8080/health)\n  if [[ ${health_check} != 200 ]]; then\n    echo \"Unhealthy - vLLM Runtime Health Check failed.\" \n    exit 1\n  fi\ndone\n"]},"failureThreshold":40,"initialDelaySeconds":20,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":30},"volumeMounts":[{"mountPath":"/dev/shm","name":"shm"}]}],"multiModel":false,"supportedModelFormats":[{"autoSelect":true,"name":"vLLM","priority":2}],"volumes":[{"emptyDir":{"medium":"Memory","sizeLimit":"12Gi"},"name":"shm"}],"workerSpec":{"containers":[{"command":["bash","-c","export RAY_HEAD_ADDRESS=\"${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:6379\"\n\nSECONDS=0\n\nwhile true; do\n  if (( SECONDS \u003c= 240 )); then\n    if ray health-check --address \"${RAY_HEAD_ADDRESS}\" \u003e /dev/null 2\u003e\u00261; then\n      echo \"Global Control Service (GCS) is ready.\"\n      break\n    fi\n    echo \"$SECONDS seconds elapsed: Waiting for Global Control Service (GCS) to be ready.\"\n  else\n    if ray health-check --address \"${RAY_HEAD_ADDRESS}\"; then\n      echo \"Global Control Service (GCS) is ready. Any error messages above can be safely ignored.\"\n      break\n    fi\n    echo \"$SECONDS seconds elapsed: Still waiting for Global Control Service (GCS) to be ready.\"\n    echo \"For troubleshooting, refer to the FAQ at https://docs.ray.io/en/master/cluster/kubernetes/troubleshooting/troubleshooting.html#kuberay-troubleshootin-guides\"\n  fi\n\n  sleep 5\ndone\n\necho \"Attempting to connect to Ray cluster at $RAY_HEAD_ADDRESS ...\"\nray start --address=\"${RAY_HEAD_ADDRESS}\" --block\n"],"env":[{"name":"RAY_USE_TLS","value":"1"},{"name":"RAY_TLS_SERVER_CERT","value":"/etc/ray/tls/tls.pem"},{"name":"RAY_TLS_SERVER_KEY","value":"/etc/ray/tls/tls.pem"},{"name":"RAY_TLS_CA_CERT","value":"/etc/ray/tls/ca.crt"},{"name":"POD_NAME","valueFrom":{"fieldRef":{"fieldPath":"metadata.name"}}},{"name":"POD_NAMESPACE","valueFrom":{"fieldRef":{"fieldPath":"metadata.namespace"}}},{"name":"POD_IP","valueFrom":{"fieldRef":{"fieldPath":"status.podIP"}}}],"image":"quay.io/modh/vllm@sha256:56aa86c6ed6ba6cc9557a8583ff9d4ee535193f6cda030bd1268064bc70120e3","livenessProbe":{"exec":{"command":["bash","-c","# Check if the registered nodes count matches PIPELINE_PARALLEL_SIZE\nregistered_node_count=$(ray status --address ${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:6379 | grep -c node_)\nif [[ ! ${registered_node_count} -ge \"${PIPELINE_PARALLEL_SIZE}\" ]]; then\n  echo \"Unhealthy - Registered nodes count (${registered_node_count}) must not be less PIPELINE_PARALLEL_SIZE (${PIPELINE_PARALLEL_SIZE}).\"\n  exit 1\nfi\n"]},"failureThreshold":2,"periodSeconds":5,"successThreshold":1,"timeoutSeconds":15},"name":"worker-container","resources":{"limits":{"cpu":"16","memory":"48Gi"},"requests":{"cpu":"8","memory":"24Gi"}},"startupProbe":{"exec":{"command":["/bin/sh","-c","registered_node_count=$(ray status --address ${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:6379 | grep -c node_)\nif [[ ! ${registered_node_count} -ge \"${PIPELINE_PARALLEL_SIZE}\" ]]; then\n  echo \"Unhealthy - Registered nodes count (${registered_node_count}) must not be less PIPELINE_PARALLEL_SIZE (${PIPELINE_PARALLEL_SIZE}).\"\n  exit 1\nfi  \n\n# Double check to make sure Model is ready to serve.\nfor i in 1 2; do\n  # Check model health\n  model_health_check=$(curl -s ${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:8080/v1/models|grep -o ${ISVC_NAME})\n  if [[ ${model_health_check} != \"${ISVC_NAME}\" ]]; then\n    echo \"Unhealthy - vLLM Runtime Health Check failed.\"\n    exit 1\n  fi                     \n  sleep 10\ndone\n"]},"failureThreshold":40,"initialDelaySeconds":20,"periodSeconds":30,"successThreshold":1,"timeoutSeconds":30},"volumeMounts":[{"mountPath":"/dev/shm","name":"shm"}]}],"pipelineParallelSize":2,"tensorParallelSize":1,"volumes":[{"emptyDir":{"medium":"Memory","sizeLimit":"12Gi"},"name":"shm"}]}}}
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+    opendatahub.io/runtime-version: v0.9.1.0
+    openshift.io/display-name: vLLM Multi-Node ServingRuntime for KServe
+  name: vllm-multinode-runtime
+  namespace: xieshen-nim
+spec:
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: '8080'
+  containers:
+    - resources:
+        limits:
+          cpu: '16'
+          memory: 48Gi
+        requests:
+          cpu: '8'
+          memory: 24Gi
+      readinessProbe:
+        exec:
+          command:
+            - bash
+            - '-c'
+            - |
+              # Check model health 
+              health_check=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8080/health)
+              if [[ ${health_check} != 200 ]]; then
+                echo "Unhealthy - vLLM Runtime Health Check failed." 
+                exit 1
+              fi
+        failureThreshold: 2
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 15
+      name: kserve-container
+      command:
+        - bash
+        - '-c'
+        - |
+          export MODEL_NAME=${MODEL_DIR}
+          CMD="python3 -m vllm.entrypoints.openai.api_server \
+              --distributed-executor-backend ray \
+              --model=${MODEL_NAME} \
+              --tensor-parallel-size=${TENSOR_PARALLEL_SIZE} \
+              --pipeline-parallel-size=${PIPELINE_PARALLEL_SIZE} $0 $@"
+          echo "*MultiNode VLLM Runtime Command*"
+          echo "$CMD"
+
+          echo ""
+          echo "Ray Start"
+          ray start --head --disable-usage-stats --include-dashboard false 
+          # wait for other node to join
+          until [[ $(ray status --address ${RAY_ADDRESS} | grep -c node_) -eq ${PIPELINE_PARALLEL_SIZE} ]]; do
+            echo "Waiting..."
+            sleep 1
+          done
+          ray status --address ${RAY_ADDRESS}
+
+          exec $CMD
+      livenessProbe:
+        exec:
+          command:
+            - bash
+            - '-c'
+            - |
+              # Check if the registered ray nodes count is greater or the same than PIPELINE_PARALLEL_SIZE
+              registered_node_count=$(ray status --address ${RAY_ADDRESS} | grep -c node_)
+              if [[ ! ${registered_node_count} -ge "${PIPELINE_PARALLEL_SIZE}" ]]; then
+                echo "Unhealthy - Registered nodes count (${registered_node_count}) must not be less PIPELINE_PARALLEL_SIZE (${PIPELINE_PARALLEL_SIZE})."
+                exit 1
+              fi     
+
+              # Check model health
+              health_check=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8080/health)
+              if [[ ${health_check} != 200 ]]; then
+                echo "Unhealthy - vLLM Runtime Health Check failed." 
+                exit 1
+              fi
+        failureThreshold: 2
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 15
+      env:
+        - name: RAY_USE_TLS
+          value: '1'
+        - name: RAY_TLS_SERVER_CERT
+          value: /etc/ray/tls/tls.pem
+        - name: RAY_TLS_SERVER_KEY
+          value: /etc/ray/tls/tls.pem
+        - name: RAY_TLS_CA_CERT
+          value: /etc/ray/tls/ca.crt
+        - name: RAY_PORT
+          value: '6379'
+        - name: RAY_ADDRESS
+          value: '127.0.0.1:6379'
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: VLLM_NO_USAGE_STATS
+          value: '1'
+        - name: HOME
+          value: /tmp
+        - name: HF_HOME
+          value: /tmp/hf_home
+      ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+      startupProbe:
+        exec:
+          command:
+            - bash
+            - '-c'
+            - |
+              # This need when head node have issues and restarted.
+              # It will wait for new worker node.                     
+              registered_node_count=$(ray status --address ${RAY_ADDRESS} | grep -c node_)
+              if [[ ! ${registered_node_count} -ge "${PIPELINE_PARALLEL_SIZE}" ]]; then
+                echo "Unhealthy - Registered nodes count (${registered_node_count}) must not be less PIPELINE_PARALLEL_SIZE (${PIPELINE_PARALLEL_SIZE})."
+                exit 1
+              fi
+
+              # Double check to make sure Model is ready to serve.
+              for i in 1 2; do                    
+                # Check model health
+                health_check=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8080/health)
+                if [[ ${health_check} != 200 ]]; then
+                  echo "Unhealthy - vLLM Runtime Health Check failed." 
+                  exit 1
+                fi
+              done
+        failureThreshold: 40
+        initialDelaySeconds: 20
+        periodSeconds: 30
+        successThreshold: 1
+        timeoutSeconds: 30
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: shm
+      image: 'quay.io/modh/vllm@sha256:56aa86c6ed6ba6cc9557a8583ff9d4ee535193f6cda030bd1268064bc70120e3'
+      args:
+        - '--served-model-name={{.Name}}'
+        - '--port=8080'
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: vLLM
+      priority: 2
+  volumes:
+    - emptyDir:
+        medium: Memory
+        sizeLimit: 12Gi
+      name: shm
+  workerSpec:
+    containers:
+      - command:
+          - bash
+          - '-c'
+          - |
+            export RAY_HEAD_ADDRESS="${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:6379"
+
+            SECONDS=0
+
+            while true; do
+              if (( SECONDS <= 240 )); then
+                if ray health-check --address "${RAY_HEAD_ADDRESS}" > /dev/null 2>&1; then
+                  echo "Global Control Service (GCS) is ready."
+                  break
+                fi
+                echo "$SECONDS seconds elapsed: Waiting for Global Control Service (GCS) to be ready."
+              else
+                if ray health-check --address "${RAY_HEAD_ADDRESS}"; then
+                  echo "Global Control Service (GCS) is ready. Any error messages above can be safely ignored."
+                  break
+                fi
+                echo "$SECONDS seconds elapsed: Still waiting for Global Control Service (GCS) to be ready."
+                echo "For troubleshooting, refer to the FAQ at https://docs.ray.io/en/master/cluster/kubernetes/troubleshooting/troubleshooting.html#kuberay-troubleshootin-guides"
+              fi
+
+              sleep 5
+            done
+
+            echo "Attempting to connect to Ray cluster at $RAY_HEAD_ADDRESS ..."
+            ray start --address="${RAY_HEAD_ADDRESS}" --block
+        env:
+          - name: RAY_USE_TLS
+            value: '1'
+          - name: RAY_TLS_SERVER_CERT
+            value: /etc/ray/tls/tls.pem
+          - name: RAY_TLS_SERVER_KEY
+            value: /etc/ray/tls/tls.pem
+          - name: RAY_TLS_CA_CERT
+            value: /etc/ray/tls/ca.crt
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        image: 'quay.io/modh/vllm@sha256:56aa86c6ed6ba6cc9557a8583ff9d4ee535193f6cda030bd1268064bc70120e3'
+        livenessProbe:
+          exec:
+            command:
+              - bash
+              - '-c'
+              - |
+                # Check if the registered nodes count matches PIPELINE_PARALLEL_SIZE
+                registered_node_count=$(ray status --address ${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:6379 | grep -c node_)
+                if [[ ! ${registered_node_count} -ge "${PIPELINE_PARALLEL_SIZE}" ]]; then
+                  echo "Unhealthy - Registered nodes count (${registered_node_count}) must not be less PIPELINE_PARALLEL_SIZE (${PIPELINE_PARALLEL_SIZE})."
+                  exit 1
+                fi
+          failureThreshold: 2
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 15
+        name: worker-container
+        resources:
+          limits:
+            cpu: '16'
+            memory: 48Gi
+          requests:
+            cpu: '8'
+            memory: 24Gi
+        startupProbe:
+          exec:
+            command:
+              - /bin/sh
+              - '-c'
+              - |
+                registered_node_count=$(ray status --address ${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:6379 | grep -c node_)
+                if [[ ! ${registered_node_count} -ge "${PIPELINE_PARALLEL_SIZE}" ]]; then
+                  echo "Unhealthy - Registered nodes count (${registered_node_count}) must not be less PIPELINE_PARALLEL_SIZE (${PIPELINE_PARALLEL_SIZE})."
+                  exit 1
+                fi  
+
+                # Double check to make sure Model is ready to serve.
+                for i in 1 2; do
+                  # Check model health
+                  model_health_check=$(curl -s ${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:8080/v1/models|grep -o ${ISVC_NAME})
+                  if [[ ${model_health_check} != "${ISVC_NAME}" ]]; then
+                    echo "Unhealthy - vLLM Runtime Health Check failed."
+                    exit 1
+                  fi                     
+                  sleep 10
+                done
+          failureThreshold: 40
+          initialDelaySeconds: 20
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 30
+        volumeMounts:
+          - mountPath: /dev/shm
+            name: shm
+    pipelineParallelSize: 2
+    tensorParallelSize: 1
+    volumes:
+      - emptyDir:
+          medium: Memory
+          sizeLimit: 12Gi
+        name: shm

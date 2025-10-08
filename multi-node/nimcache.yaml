@@ -1,0 +1,30 @@
+apiVersion: apps.nvidia.com/v1alpha1
+kind: NIMCache
+metadata:
+  name: meta-llama-3-1-8b-instruct
+  namespace: xieshen-nim
+spec:
+  nodeSelector:
+    node.kubernetes.io/instance-type: g5.2xlarge
+  resources:
+    cpu: 500m
+    memory: 20Gi
+  source:
+    hf:
+      authSecret: hf-api-secret
+      endpoint: 'https://huggingface.co'
+      modelName: Llama-3.1-8B-Instruct
+      modelPuller: 'nvcr.io/nim/nvidia/llm-nim:1.12'
+      namespace: meta-llama
+      pullSecret: ngc-secret
+  storage:
+    pvc:
+      create: true
+      size: 50Gi
+      storageClass: ocs-storagecluster-cephfs
+      volumeAccessMode: ReadWriteMany
+      subPath: meta-llama-3-1-8b-instruct
+  tolerations:
+    - effect: NoSchedule
+      key: g5-gpu
+      operator: Exists

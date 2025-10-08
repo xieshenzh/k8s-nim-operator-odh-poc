@@ -1,0 +1,189 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: kserve-huggingfaceserver-multinode
+  namespace: xieshen-nim
+spec:
+  annotations:
+    prometheus.kserve.io/path: /metrics
+    prometheus.kserve.io/port: '8080'
+  containers:
+    - resources:
+        limits:
+          cpu: '4'
+          memory: 12Gi
+        requests:
+          cpu: '2'
+          memory: 6Gi
+      readinessProbe:
+        exec:
+          command:
+            - bash
+            - '-c'
+            - |
+              python ./huggingfaceserver/health_check.py runtime_health --health_check_url http://localhost:8080 --probe_name head_readiness
+        failureThreshold: 2
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 15
+      name: kserve-container
+      command:
+        - bash
+        - '-c'
+        - |
+          export MODEL_DIR_ARG=""
+          if [[ ! -z ${MODEL_ID} ]]
+          then
+            export MODEL_DIR_ARG="--model_dir=${MODEL_ID}"
+          fi
+
+          if [[ ! -z ${MODEL_DIR} ]]
+          then
+            export MODEL_DIR_ARG="--model_dir=${MODEL_DIR}"
+          fi
+
+          export RAY_ADDRESS=${POD_IP}:${RAY_PORT}
+          ray start --head --disable-usage-stats --include-dashboard false 
+          python ./huggingfaceserver/health_check.py registered_nodes --retries 200  --probe_name runtime_start
+
+          python -m huggingfaceserver ${MODEL_DIR_ARG} --tensor-parallel-size=${TENSOR_PARALLEL_SIZE} --pipeline-parallel-size=${PIPELINE_PARALLEL_SIZE} $0 $@
+      livenessProbe:
+        exec:
+          command:
+            - bash
+            - '-c'
+            - |
+              python ./huggingfaceserver/health_check.py registered_node_and_runtime_health --health_check_url http://localhost:8080 --probe_name head_liveness
+        failureThreshold: 2
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 15
+      env:
+        - name: RAY_PORT
+          value: '6379'
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: VLLM_CONFIG_ROOT
+          value: /tmp
+        - name: HF_HUB_CACHE
+          value: /tmp
+      startupProbe:
+        exec:
+          command:
+            - bash
+            - '-c'
+            - |
+              python ./huggingfaceserver/health_check.py registered_node_and_runtime_health --health_check_url http://localhost:8080 --probe_name head_startup
+        failureThreshold: 40
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        successThreshold: 1
+        timeoutSeconds: 30
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: shm
+      image: 'kserve/huggingfaceserver:latest-gpu'
+      args:
+        - '--model_name={{.Name}}'
+  protocolVersions:
+    - v2
+    - v1
+  supportedModelFormats:
+    - autoSelect: true
+      name: huggingface
+      priority: 2
+      version: '1'
+  volumes:
+    - emptyDir:
+        medium: Memory
+        sizeLimit: 3Gi
+      name: shm
+  workerSpec:
+    containers:
+      - command:
+          - bash
+          - '-c'
+          - |
+            export RAY_HEAD_ADDRESS=${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:6379
+            SECONDS=0
+
+            while true; do              
+              if (( SECONDS <= 240 )); then
+                if ray health-check --address "${RAY_HEAD_ADDRESS}" > /dev/null 2>&1; then
+                  echo "Ray Global Control Service(GCS) is ready."
+                  break
+                fi
+                echo "$SECONDS seconds elapsed: Waiting for Ray Global Control Service(GCS) to be ready."
+              else
+                if ray health-check --address "${RAY_HEAD_ADDRESS}"; then
+                  echo "Ray Global Control Service(GCS) is ready. Any error messages above can be safely ignored."
+                  break
+                fi
+                echo "$SECONDS seconds elapsed: Still waiting for Ray Global Control Service(GCS) to be ready."
+              fi
+
+              sleep 5
+            done
+
+            echo "Attempting to connect to Ray cluster at $RAY_HEAD_ADDRESS ..."
+            ray start --address="${RAY_HEAD_ADDRESS}" --block
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        image: 'kserve/huggingfaceserver:latest-gpu'
+        livenessProbe:
+          exec:
+            command:
+              - bash
+              - '-c'
+              - |
+                export RAY_ADDRESS=${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local:6379
+                python ./huggingfaceserver/health_check.py registered_nodes --probe_name worker_liveness
+          failureThreshold: 2
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 15
+        name: worker-container
+        resources:
+          limits:
+            cpu: '4'
+            memory: 12Gi
+          requests:
+            cpu: '2'
+            memory: 6Gi
+        startupProbe:
+          exec:
+            command:
+              - bash
+              - '-c'
+              - |
+                export RAY_HEAD_NODE=${HEAD_SVC}.${POD_NAMESPACE}.svc.cluster.local
+                export RAY_ADDRESS=${RAY_HEAD_NODE}:6379
+                python ./huggingfaceserver/health_check.py registered_node_and_runtime_models --runtime_url http://${RAY_HEAD_NODE}:8080/v1/models --probe_name worker_startup
+          failureThreshold: 40
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 30
+        volumeMounts:
+          - mountPath: /dev/shm
+            name: shm
+    pipelineParallelSize: 2
+    tensorParallelSize: 1
+    volumes:
+      - emptyDir:
+          medium: Memory
+          sizeLimit: 3Gi
+        name: shm

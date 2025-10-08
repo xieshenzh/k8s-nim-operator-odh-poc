@@ -1,0 +1,65 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/autoscalerClass: external
+  name: meta-llama-3-1-8b-instruct
+spec:
+  predictor:
+    nodeSelector:
+      node.kubernetes.io/instance-type: g5.2xlarge
+    tolerations:
+      - effect: NoSchedule
+        key: g5-gpu
+        operator: Exists
+    volumes:
+      - emptyDir:
+          medium: Memory
+        name: triton
+      - emptyDir:
+          medium: Memory
+        name: cache
+      - emptyDir:
+          medium: Memory
+        name: config
+    model:
+      runtime: kserve-huggingfaceserver-multinode
+      modelFormat:
+        name: huggingface
+      storageUri: pvc://meta-llama-3-1-8b-instruct-pvc/meta-llama-3-1-8b-instruct
+      volumeMounts:
+        - mountPath: /.triton
+          name: triton
+        - mountPath: /.cache
+          name: cache
+        - mountPath: /.config
+          name: config
+    workerSpec:
+      pipelineParallelSize: 2
+      tensorParallelSize: 1
+#      resources:
+#        limits:
+#          cpu: '16'
+#          memory: 64Gi
+#          nvidia.com/gpu: '2'
+#        requests:
+#          cpu: '8'
+#          memory: 32Gi
+#          nvidia.com/gpu: '2'
+      nodeSelector:
+        node.kubernetes.io/instance-type: g5.2xlarge
+      tolerations:
+        - effect: NoSchedule
+          key: g5-gpu
+          operator: Exists
+      volumes:
+        - emptyDir:
+            medium: Memory
+          name: triton
+        - emptyDir:
+            medium: Memory
+          name: cache
+        - emptyDir:
+            medium: Memory
+          name: config
