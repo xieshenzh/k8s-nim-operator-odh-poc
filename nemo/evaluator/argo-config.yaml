@@ -1,0 +1,9 @@
+
+  workflowDefaults:
+    spec:
+      imagePullSecrets:
+      - name: ngc-secret
+      - name: nvcrimagepullsecret
+      podMetadata:
+        annotations:
+          openshift.io/required-scc: anyuid
