@@ -1,0 +1,27 @@
+apiVersion: apps.nvidia.com/v1alpha1
+kind: NIMCache
+metadata:
+  name: llama-3-1-8b-instruct
+  namespace: xieshen-nim
+spec:
+  resources:
+    cpu: '0'
+    memory: '0'
+  source:
+    ngc:
+      authSecret: ngc-api-secret
+      model:
+        profiles:
+          - 574eb0765118b2087b5fd6c8684a79e682bd03062f80343cfd9e2140ffa962cd
+      modelPuller: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:1.13.1'
+      pullSecret: ngc-secret
+  storage:
+    pvc:
+      create: true
+      size: 50Gi
+      storageClass: gp3-csi
+      volumeAccessMode: ReadWriteOnce
+  tolerations:
+    - effect: NoSchedule
+      key: p4de-gpu
+      operator: Exists
