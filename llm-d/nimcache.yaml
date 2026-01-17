@@ -12,8 +12,8 @@ spec:
       authSecret: ngc-api-secret
       model:
         profiles:
-          - 574eb0765118b2087b5fd6c8684a79e682bd03062f80343cfd9e2140ffa962cd
-      modelPuller: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:1.13.1'
+          - 10e5c5c7b0037e16bc74e9ec32942256bf73fda9902c2697b6cbd8fe94b8b47e
+      modelPuller: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:1.15.4'
       pullSecret: ngc-secret
   storage:
     pvc:
@@ -23,5 +23,5 @@ spec:
       volumeAccessMode: ReadWriteOnce
   tolerations:
     - effect: NoSchedule
-      key: p4de-gpu
+      key: g6e-gpu
       operator: Exists

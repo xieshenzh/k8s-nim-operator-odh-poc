@@ -13,7 +13,7 @@ spec:
   template:
     containers:
       - name: main
-        image: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:latest'
+        image: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:1.15.4'
         env:
           - name: NGC_API_KEY
             valueFrom:
@@ -22,6 +22,12 @@ spec:
                 name: ngc-api-secret
           - name: NIM_CACHE_PATH
             value: /mnt/models
+          - name: NIM_SSL_MODE
+            value: TLS
+          - name: NIM_SSL_KEY_PATH
+            value: /var/run/kserve/tls/tls.key
+          - name: NIM_SSL_CERTS_PATH
+            value: /var/run/kserve/tls/tls.crt
         command: ["/bin/bash"]
         args: ["/opt/nim/start_server.sh"]
         ports:
@@ -40,7 +46,7 @@ spec:
           httpGet:
             path: /v1/health/ready
             port: 8000
-            scheme: HTTP
+            scheme: HTTPS
           initialDelaySeconds: 15
           timeoutSeconds: 1
           periodSeconds: 10
@@ -50,7 +56,7 @@ spec:
           httpGet:
             path: /v1/health/live
             port: 8000
-            scheme: HTTP
+            scheme: HTTPS
           initialDelaySeconds: 15
           timeoutSeconds: 1
           periodSeconds: 10
@@ -60,7 +66,7 @@ spec:
           httpGet:
             path: /v1/health/ready
             port: 8000
-            scheme: HTTP
+            scheme: HTTPS
           initialDelaySeconds: 30
           timeoutSeconds: 1
           periodSeconds: 10
@@ -78,5 +84,5 @@ spec:
         name: dshm
     tolerations:
       - effect: NoSchedule
-        key: p4de-gpu
+        key: g6e-gpu
         operator: Exists
