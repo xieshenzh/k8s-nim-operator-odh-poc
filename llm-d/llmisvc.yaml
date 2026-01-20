@@ -1,11 +1,11 @@
 apiVersion: serving.kserve.io/v1alpha1
 kind: LLMInferenceService
 metadata:
-  name: nim-llama-3-1-8b-instruct-single
+  name: llama-3-2-nv-embedqa-1b-v2-single
 spec:
   model:
-    uri: pvc://llama-3-1-8b-instruct-pvc
-    name: meta-llama/llama-3.1-8b-instruct
+    uri: pvc://llama-3-2-nv-embedqa-1b-v2-pvc
+    name: nvidia/llama-nemotron-embed-1b-v2
   # Three replicas for load balancing
   replicas: 1
   router:
@@ -13,7 +13,7 @@ spec:
   template:
     containers:
       - name: main
-        image: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:1.15.4'
+        image: 'nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10'
         env:
           - name: NGC_API_KEY
             valueFrom:
@@ -23,10 +23,10 @@ spec:
           - name: NIM_CACHE_PATH
             value: /mnt/models
           - name: NIM_SSL_MODE
-            value: TLS
+            value: tls
           - name: NIM_SSL_KEY_PATH
             value: /var/run/kserve/tls/tls.key
-          - name: NIM_SSL_CERTS_PATH
+          - name: NIM_SSL_CERT_PATH
             value: /var/run/kserve/tls/tls.crt
         command: ["/bin/bash"]
         args: ["/opt/nim/start_server.sh"]

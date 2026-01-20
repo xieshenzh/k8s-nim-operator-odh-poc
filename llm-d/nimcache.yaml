@@ -1,7 +1,7 @@
 apiVersion: apps.nvidia.com/v1alpha1
 kind: NIMCache
 metadata:
-  name: llama-3-1-8b-instruct
+  name: llama-3-2-nv-embedqa-1b-v2
   namespace: xieshen-nim
 spec:
   resources:
@@ -12,8 +12,8 @@ spec:
       authSecret: ngc-api-secret
       model:
         profiles:
-          - 10e5c5c7b0037e16bc74e9ec32942256bf73fda9902c2697b6cbd8fe94b8b47e
-      modelPuller: 'nvcr.io/nim/meta/llama-3.1-8b-instruct:1.15.4'
+          - 77b5b9d6572c92559ee563f0b219b458520978180f69473cc9ebc2c97a804d11
+      modelPuller: 'nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2:1.10'
       pullSecret: ngc-secret
   storage:
     pvc:
