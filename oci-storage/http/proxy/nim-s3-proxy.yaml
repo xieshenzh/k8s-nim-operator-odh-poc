@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nim-proxy-config
+data:
+  nginx.conf: |
+    server {
+        listen 8080;
+        server_name _;
+
+        resolver 8.8.8.8 valid=30s;
+
+        # Support large model files
+        client_max_body_size 0;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_connect_timeout 60s;
+
+        location / {
+            set $s3_backend "https://xieshen-nim-s3.s3.us-east-1.amazonaws.com";
+
+            set_by_lua_block $encoded_uri {
+                local uri = ngx.var.request_uri
+                local result = string.gsub(uri, "%%", "%%25")
+                return result
+            }
+
+            proxy_pass $s3_backend$encoded_uri;
+            proxy_ssl_server_name on;
+            proxy_ssl_protocols TLSv1.2 TLSv1.3;
+            proxy_set_header Host xieshen-nim-s3.s3.us-east-1.amazonaws.com;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nim-s3-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nim-s3-proxy
+  template:
+    metadata:
+      labels:
+        app: nim-s3-proxy
+    spec:
+      containers:
+        - name: openresty
+          image: openresty/openresty:1.27.1.2-alpine
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: nginx.conf
+            - name: run
+              mountPath: /var/run/openresty
+            - name: logs
+              mountPath: /usr/local/openresty/nginx/logs
+      volumes:
+        - name: config
+          configMap:
+            name: nim-proxy-config
+        - name: run
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nim-s3-proxy
+spec:
+  selector:
+    app: nim-s3-proxy
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: nim-s3-proxy
+  annotations:
+    haproxy.router.openshift.io/timeout: 3600s
+spec:
+  tls:
+    termination: edge
+  to:
+    kind: Service
+    name: nim-s3-proxy
+  port:
+    targetPort: 8080

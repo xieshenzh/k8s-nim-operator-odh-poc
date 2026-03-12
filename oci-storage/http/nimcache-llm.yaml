@@ -2,11 +2,11 @@
 apiVersion: apps.nvidia.com/v1alpha1
 kind: NIMCache
 metadata:
-  name: meta-llama3-2-1b-instruct-s3
+  name: meta-llama3-2-1b-instruct-https
 spec:
   env:
     - name: NIM_REPOSITORY_OVERRIDE
-      value: "s3://xieshen-nim-s3/"
+      value: "https://nim-s3-proxy-xieshen-nim.apps.ai-dev04.kni.syseng.devcluster.openshift.com"
     - name: AWS_PROFILE
       value: "default"
     - name: AWS_REGION
